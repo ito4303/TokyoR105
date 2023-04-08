@@ -39,6 +39,7 @@ vignettes/*.pdf
 .Renviron
 
 # other directory and files
+stan_output/
 *_files/
 *.html
 logistic

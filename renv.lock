@@ -5,6 +5,10 @@
       {
         "Name": "CRAN",
         "URL": "https://cran.ism.ac.jp"
+      },
+      {
+        "Name": "cmdstanr",
+        "URL": "https://mc-stan.org/r-packages"
       }
     ]
   },
@@ -149,7 +153,8 @@
     "cmdstanr": {
       "Package": "cmdstanr",
       "Version": "0.5.3",
-      "Source": "unknown",
+      "Source": "Repository",
+      "Repository": "cmdstanr",
       "Requirements": [
         "R",
         "R6",
