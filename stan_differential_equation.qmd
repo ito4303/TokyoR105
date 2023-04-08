@@ -1,0 +1,100 @@
+---
+title: "RとStanで微分方程式入りのモデル"
+author: "伊東宏樹"
+format: revealjs
+lang: ja
+date: 2023-04-22
+date-format: iso
+editor: visual
+---
+
+## 自己紹介
+
+名前: 伊東宏樹
+
+勤務先: 森林総合研究所北海道支所
+
+専門: 森林生態学
+
+共訳書:
+
+[![](https://www.hanmoto.com/bd/img/9784320057807.jpg){fig-alt="BUGSで学ぶ階層モデリング入門"}](https://www.hanmoto.com/bd/isbn/9784320057807) [![](https://www.hanmoto.com/bd/img/9784320058149.jpg){fig-alt="生態学のための階層モデリング"}](https://www.hanmoto.com/bd/isbn/9784320058149)
+
+## ロジスティック方程式
+
+$$
+\frac{dx}{dt} = rx\left(1-\frac{x}{K}\right)
+$$
+
+## Data
+
+```{r setup}
+library(ggplot2)
+library(cmdstanr)
+
+logistic <- function(t, x0, r, K) {
+  K / (1 + (K / x0 - 1) * exp(-r * t))
+}
+```
+
+
+```{r data}
+# settings
+r <- 0.4           # 内的自然増加率
+K <- 10            # 環境収容力
+Time <- seq(0, 30) # 時間
+N <- length(Time)  # 時間データの数
+x0 <- 0.05         # 個体数量の初期値
+
+# generate data
+x <- sapply(Time, logistic, x0 = x0, r = r, K = K)
+
+# plot
+p0 <- data.frame(Time = Time, Abundance = x) |>
+  ggplot(aes(x = Time, y = Abundance)) +
+  geom_point() +
+  geom_function(fun = logistic,
+                args = list(x0 = x0, r = r, K = K)) +
+  ylim(0, 15)
+
+# add noise
+set.seed(1234)
+sigma <- 0.15
+y <- rlnorm(N, log(x), sigma)
+
+# plot
+p1 <- data.frame(Time = Time, Abundance = y) |>
+  ggplot(mapping = aes(x = Time, y = Abundance)) +
+  geom_point() +
+  geom_function(fun = logistic,
+                args = list(x0 = x0, r = r, K = K)) +
+  ylim(0, 15)
+print(p1)
+```
+
+## Stan
+
+```{r stan}
+#| include: false
+#| cache: true
+# fit using Stan
+stan_data <- list(N = N - 1,
+                  ts = Time[-1],
+                  y0 = y[1],
+                  y = y[-1])
+model <- cmdstan_model("logistic.stan")
+fit <- model$sample(stan_data)
+```
+
+```{r results}
+# posterior mean
+x0_hat <- fit$summary("z0")$mean
+r_hat <- fit$summary("r")$mean
+K_hat <- fit$summary("K")$mean
+
+p1 +
+  geom_function(fun = logistic,
+                args = list(x0 = x0_hat, r = r_hat, K = K_hat),
+                color = "red", linewidth = 1.5, alpha = 0.8)
+```
+
