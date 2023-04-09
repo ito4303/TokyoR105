@@ -30,7 +30,7 @@ editor: visual
 ## ロジスティック方程式
 
 ::: {style="margin-top: 1em;"}
-ある生物の個体数 *x* （正の実数）の、時間 *t* における変化量
+ある生物の個体数 *x* (正の実数)の、時間 *t* における変化量
 :::
 
 $$
@@ -165,7 +165,7 @@ fit <- model$sample(stan_data, output_dir = output_dir)
 ## 結果
 
 ::: {style="font-size: 80%;"}
-パラメータの事後平均値をつかってロジスティック曲線を描画（赤線）。
+パラメータの事後平均値をつかってロジスティック曲線を描画(赤線)。
 :::
 
 ```{r results}
@@ -182,7 +182,7 @@ p1 +
 
 ## 本日の資料
 
--   スライド:
+-   スライド: <https://ito4303.github.io/stan_ode.html>
 -   リポジトリ: <https://github.com/ito4303/TokyoR105>
 
 ::: {style="text-align: center; font-size: 300%;"}
