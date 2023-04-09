@@ -6,6 +6,7 @@ format:
   revealjs:
     theme: [default, custom.scss]
     standalone: true
+    slide-number: true
 lang: ja
 date: 2023-04-22
 date-format: iso
@@ -14,26 +15,23 @@ editor: visual
 
 ## 自己紹介
 
-::: columns
-::: {.column width="50%"}
--   名前: 伊東宏樹
--   勤務先: 森林総合研究所\
-    北海道支所
--   専門: 森林生態学
--   ウェブサイト
-    -   <https://ito4303.sakura.ne.jp/>
-    -   <https://ito4303.github.io/>
-:::
+::: {style="margin-top: 1em; text-align: left;"}
+名前: 伊東宏樹
 
-::: {.column width="50%"}
--   共訳書:\
-    [![](https://www.hanmoto.com/bd/img/9784320057807.jpg){fig-alt="BUGSで学ぶ階層モデリング入門" style="vertical-align: top;"}](https://www.hanmoto.com/bd/isbn/9784320057807) [![](https://www.hanmoto.com/bd/img/9784320058149.jpg){fig-alt="生態学のための階層モデリング" style="vertical-align: top;"}](https://www.hanmoto.com/bd/isbn/9784320058149)
+勤務先: 森林総合研究所 北海道支所
+
+共訳書:
+
+::: {style="margin-left: 2em; text-align: left;"}
+[![](https://www.hanmoto.com/bd/img/9784320057807.jpg){fig-alt="BUGSで学ぶ階層モデリング入門" style="vertical-align: top;"}](https://www.hanmoto.com/bd/isbn/9784320057807) [![](https://www.hanmoto.com/bd/img/9784320058149.jpg){fig-alt="生態学のための階層モデリング" style="vertical-align: top;"}](https://www.hanmoto.com/bd/isbn/9784320058149)
 :::
 :::
 
 ## ロジスティック方程式
 
-ある生物の個体数 *x* (実数)の、時間 *t* における変化量
+::: {style="margin-top: 1em;"}
+ある生物の個体数 *x* （正の実数）の、時間 *t* における変化量
+:::
 
 $$
 \frac{dx}{dt} = rx\left(1-\frac{x}{K}\right)
@@ -62,14 +60,6 @@ x0 <- 0.05         # 個体数量の初期値
 # generate data
 x <- sapply(Time, logistic, x0 = x0, r = r, K = K)
 
-# plot
-p0 <- data.frame(Time = Time, Abundance = x) |>
-  ggplot(aes(x = Time, y = Abundance)) +
-  geom_point() +
-  geom_function(fun = logistic,
-                args = list(x0 = x0, r = r, K = K)) +
-  ylim(0, 15)
-
 # add noise
 set.seed(1234)
 sigma <- 0.15
@@ -78,10 +68,11 @@ y <- rlnorm(N, log(x), sigma)
 # plot
 p1 <- data.frame(Time = Time, Abundance = y) |>
   ggplot(mapping = aes(x = Time, y = Abundance)) +
-  geom_point() +
+  geom_point(size = 2.5) +
   geom_function(fun = logistic,
                 args = list(x0 = x0, r = r, K = K)) +
-  ylim(0, 15)
+  ylim(0, 15) +
+  theme_gray(base_family = "Helvetica", base_size = 21)
 print(p1)
 ```
 
@@ -92,29 +83,37 @@ print(p1)
 
 ## Stanの常微分方程式ソルバー関数
 
-アルゴリズムの異なる種類がいくつか用意されているが、今回は`ode_rk45`を使用。
+::: {style="margin-top: 1em;"}
+アルゴリズムの異なる関数がいくつか用意されているが、今回は`ode_rk45`を使用。
+:::
 
-``` {style="margin-top: 1em; margin-bottom: 2em; border: 1px solid gray;"}
-array[] vector ode_rk45(function ode, vector initial_state, real initial_time, array[] real times, ...)
+``` stan
+array[] vector ode_rk45(function ode, 
+                        vector initial_state,
+                        real initial_time,
+                        array[] real times, ...)
 ```
 
+::: {style="margin-top: 1em;"}
 引数として与える関数の形式
+:::
 
-``` {style="border: 1px solid gray;"}
+``` stan
 vector ode(real time, vector state, ...)
 ```
 
 ## Stanモデルのfunctionsブロック
 
+::: {style="margin-top: 1em;"}
 ロジスティック方程式を定義
+:::
 
-```{r stan_code_functions}
+```{r stan_code}
 model_file <- "logistic.stan"
 stan_code <- readLines(model_file)
-#cat(stan_code[10:19], sep = "\n")
 ```
 
-``` {.stan style="font-size: 85%;"}
+``` {.stan code-line-numbers="1-10|7"}
 functions {
   vector logistic(real t, vector x, array[] real theta) {
     vector[1] dx_dt;
@@ -129,14 +128,11 @@ functions {
 
 ## Stanモデルのmodelブロック
 
-```{r stan_code_model}
-#cat(stan_code[35:47], sep = "\n")
-```
-
-``` {.stan style="font-size: 85%;"}
+``` {.stan code-line-numbers="1-14|3-4|6-8" style="margin-top: 1em;"}
 model {
   array[2] real theta = {r, K};
-  array[N] vector[1] z = ode_rk45(logistic, z0, 0, ts, theta);
+  array[N] vector[1] z = ode_rk45(logistic, z0, 0, ts,
+                                  theta);
 
   y0 ~ lognormal(log(z0), sigma);
   for (n in 1:N)
@@ -169,7 +165,7 @@ fit <- model$sample(stan_data, output_dir = output_dir)
 ## 結果
 
 ::: {style="font-size: 80%;"}
-パラメータの事後平均値をつかってロジスティック曲線を描画(赤線)。
+パラメータの事後平均値をつかってロジスティック曲線を描画（赤線）。
 :::
 
 ```{r results}
@@ -186,8 +182,8 @@ p1 +
 
 ## 本日の資料
 
--   slide:
--   repo: <https://github.com/ito4303/TokyoR105>
+-   スライド:
+-   リポジトリ: <https://github.com/ito4303/TokyoR105>
 
 ::: {style="text-align: center; font-size: 300%;"}
 🥳
