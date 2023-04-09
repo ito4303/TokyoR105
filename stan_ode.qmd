@@ -1,0 +1,190 @@
+---
+title: "RとStanで微分方程式入りのモデル"
+subtitle: "Tokyo.R #105"
+author: "伊東宏樹"
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    standalone: true
+    slide-number: true
+lang: ja
+date: 2023-04-22
+date-format: iso
+editor: visual
+---
+
+## 自己紹介
+
+::: {style="margin-top: 1em; text-align: left;"}
+名前: 伊東宏樹
+
+勤務先: 森林総合研究所 北海道支所
+
+共訳書:
+
+::: {style="margin-left: 2em; text-align: left;"}
+[![](https://www.hanmoto.com/bd/img/9784320057807.jpg){fig-alt="BUGSで学ぶ階層モデリング入門" style="vertical-align: top;"}](https://www.hanmoto.com/bd/isbn/9784320057807) [![](https://www.hanmoto.com/bd/img/9784320058149.jpg){fig-alt="生態学のための階層モデリング" style="vertical-align: top;"}](https://www.hanmoto.com/bd/isbn/9784320058149)
+:::
+:::
+
+## ロジスティック方程式
+
+::: {style="margin-top: 1em;"}
+ある生物の個体数 *x* (正の実数)の、時間 *t* における変化量
+:::
+
+$$
+\frac{dx}{dt} = rx\left(1-\frac{x}{K}\right)
+$$
+
+-   *r* : 内的自然増加率
+-   *K* : 環境収容力
+
+## 模擬データの生成
+
+```{r settings}
+library(ggplot2)
+library(cmdstanr)
+
+logistic <- function(t, x0, r, K) {
+  K / (1 + (K / x0 - 1) * exp(-r * t))
+}
+
+# settings
+r <- 0.4           # 内的自然増加率
+K <- 10            # 環境収容力
+Time <- seq(0, 30) # 時間
+N <- length(Time)  # 時間データの数
+x0 <- 0.05         # 個体数量の初期値
+
+# generate data
+x <- sapply(Time, logistic, x0 = x0, r = r, K = K)
+
+# add noise
+set.seed(1234)
+sigma <- 0.15
+y <- rlnorm(N, log(x), sigma)
+
+# plot
+p1 <- data.frame(Time = Time, Abundance = y) |>
+  ggplot(mapping = aes(x = Time, y = Abundance)) +
+  geom_point(size = 2.5) +
+  geom_function(fun = logistic,
+                args = list(x0 = x0, r = r, K = K)) +
+  ylim(0, 15) +
+  theme_gray(base_family = "Helvetica", base_size = 21)
+print(p1)
+```
+
+::: {style="font-size: 80%;"}
+-   用意したロジスティック曲線にそった値に、対数正規分布のノイズが加わって点のデータが生成されたとする。
+-   微分方程式を組み込んだモデルで、点のデータから、曲線のパラメータ (*r*, *K*) を推定する。
+:::
+
+## Stanの常微分方程式ソルバー関数
+
+::: {style="margin-top: 1em;"}
+アルゴリズムの異なる関数がいくつか用意されているが、今回は`ode_rk45`を使用。
+:::
+
+``` stan
+array[] vector ode_rk45(function ode, 
+                        vector initial_state,
+                        real initial_time,
+                        array[] real times, ...)
+```
+
+::: {style="margin-top: 1em;"}
+引数として与える関数の形式
+:::
+
+``` stan
+vector ode(real time, vector state, ...)
+```
+
+## Stanモデルのfunctionsブロック
+
+::: {style="margin-top: 1em;"}
+ロジスティック方程式を定義
+:::
+
+```{r stan_code}
+model_file <- "logistic.stan"
+stan_code <- readLines(model_file)
+```
+
+``` {.stan code-line-numbers="1-10|7"}
+functions {
+  vector logistic(real t, vector x, array[] real theta) {
+    vector[1] dx_dt;
+    real r = theta[1];
+    real K = theta[2];
+
+    dx_dt[1] = r * x[1] * (1 - x[1] / K);
+    return dx_dt;
+  }
+}
+```
+
+## Stanモデルのmodelブロック
+
+``` {.stan code-line-numbers="1-14|3-4|6-8" style="margin-top: 1em;"}
+model {
+  array[2] real theta = {r, K};
+  array[N] vector[1] z = ode_rk45(logistic, z0, 0, ts,
+                                  theta);
+
+  y0 ~ lognormal(log(z0), sigma);
+  for (n in 1:N)
+    y[n] ~ lognormal(log(z[n]), sigma);
+  // priors
+  r ~ normal(0, 5);
+  K ~ normal(0, 100);
+  z0 ~ normal(0, 100);
+  sigma ~ normal(0, 5);
+}
+```
+
+```{r stan_fit}
+#| include: false
+#| cache: true
+output_dir <- "stan_output"
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir)
+}
+
+# fit using Stan
+stan_data <- list(N = N - 1,
+                  ts = Time[-1],
+                  y0 = y[1],
+                  y = y[-1])
+model <- cmdstan_model(model_file)
+fit <- model$sample(stan_data, output_dir = output_dir)
+```
+
+## 結果
+
+::: {style="font-size: 80%;"}
+パラメータの事後平均値をつかってロジスティック曲線を描画(赤線)。
+:::
+
+```{r results}
+# posterior mean
+x0_hat <- fit$summary("z0")$mean
+r_hat <- fit$summary("r")$mean
+K_hat <- fit$summary("K")$mean
+
+p1 +
+  geom_function(fun = logistic,
+                args = list(x0 = x0_hat, r = r_hat, K = K_hat),
+                color = "red", linewidth = 1.5, alpha = 0.8)
+```
+
+## 本日の資料
+
+-   スライド: <https://ito4303.github.io/stan_ode.html>
+-   リポジトリ: <https://github.com/ito4303/TokyoR105>
+
+::: {style="text-align: center; font-size: 300%;"}
+🥳
+:::
