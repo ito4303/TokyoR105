@@ -5,7 +5,7 @@ author: "伊東宏樹"
 format:
   revealjs:
     theme: [default, custom.scss]
-    standalone: true
+    embed-resources: true
     slide-number: true
 lang: ja
 date: 2023-04-22
