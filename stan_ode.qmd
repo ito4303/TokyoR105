@@ -30,13 +30,15 @@ editor: visual
 ## ロジスティック方程式
 
 ::: {style="margin-top: 1em;"}
-ある生物の個体数 *x* (正の実数)の、時間 *t* における変化量
+生物の個体数の時間変化をあらわす微分方程式
 :::
 
 $$
 \frac{dx}{dt} = rx\left(1-\frac{x}{K}\right)
 $$
 
+-   *x* : 個体数
+-   *t* : 時間
 -   *r* : 内的自然増加率
 -   *K* : 環境収容力
 
@@ -81,10 +83,10 @@ print(p1)
 -   微分方程式を組み込んだモデルで、点のデータから、曲線のパラメータ (*r*, *K*) を推定する。
 :::
 
-## Stanの常微分方程式ソルバー関数
+## Stanで微分方程式
 
 ::: {style="margin-top: 1em;"}
-アルゴリズムの異なる関数がいくつか用意されているが、今回は`ode_rk45`を使用。
+Stanには[常微分方程式](https://mc-stan.org/docs/stan-users-guide/ode-solver.html)の[数値解を求める関数](https://mc-stan.org/docs/functions-reference/functions-ode-solver.html)が組み込まれている。アルゴリズムの異なる関数がいくつか用意されているが、今回は一般的な`ode_rk45`を使用。
 :::
 
 ``` stan
