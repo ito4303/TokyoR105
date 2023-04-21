@@ -104,7 +104,7 @@ array[] vector ode_rk45(function ode,
 vector ode(real time, vector state, ...)
 ```
 
-## Stanモデルのfunctionsブロック
+## Stanモデル: functionsブロック
 
 ::: {style="margin-top: 1em;"}
 ロジスティック方程式を定義
@@ -128,7 +128,25 @@ functions {
 }
 ```
 
-## Stanモデルのmodelブロック
+## data & parametersブロック
+
+``` {.stan style="margin-top: 1em;"}
+data {
+  int<lower = 0> N;            // number of measurements
+  array[N] real ts;            // measurement times
+  real<lower = 0> y0;          // initial measured value
+  array[N] real<lower = 0> y;  // measured values
+}
+
+parameters {
+  real<lower = 0> r;        // intrinsic growth rate
+  real<lower = 0> K;        // carrying capacity
+  vector<lower = 0>[1] z0;  // initial value
+  real<lower = 0> sigma;    // noise scale
+}
+```
+
+## modelブロック
 
 ``` {.stan code-line-numbers="1-14|3-4|6-8" style="margin-top: 1em;"}
 model {
